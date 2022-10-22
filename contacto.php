@@ -9,23 +9,19 @@ $nombre =
 	$telefono =
 	$comentario = $errores = null;
 
-//variables para ficheros
-$fichero = $_FILES['fichero'];
-$nombreFichero = $_FILES['fichero']['name'];
-$tipoFichero = $_FILES['fichero']['type'];
-$longFichero = $_FILES['fichero']['size'];
-$tmpNombre = $_FILES['fichero']['tmp_name'];
-$destinoServidor = 'archivos';
-$posicion = null;
-$extension = null;
-
 //array con las extensiones permitidas
 $extensionesValidas = array('.jpg', '.jpeg', '.png', '.gif', 'svg');
+
+//variables para archivos
+$fichero = $nombreFichero =
+	$tipoFichero = $longFichero = $tmpNombre = $posicion = $extension = null;
+$destinoServidor = 'archivos';
+$archivoLog = 'archivos/log.txt';
 
 //datos para el mail
 const DESTINATARIO = 'destinatario@mail.com';
 const ASUNTO = 'Correo desde formulario de contacto';
-$fecha = date('d-m-Y');
+$fecha = date("Y-m-d H:i:s");
 $remitente = null;
 $codigoConsulta = null;
 $copiaCorreo = null;
@@ -44,9 +40,8 @@ if (isset($_POST['enviar'])) {
 
 	//valido inputs del formulario. Esta funcion tiene encadenadas las funciones siguientes
 	validarInputs();
-
-	//mediante una funcion obtengo un codigo aleatorio
-	$codigoConsulta = generarCodigo();
+	guardarLog();
+	mostrarLog();
 
 
 	//guardar correo enviado en el archivo de log en formato csv;
@@ -95,9 +90,14 @@ function validarInputs()
 //si se ha seleccionado un fichero moverlo a la carpeta 'archivos'
 function recuperarArchivo()
 {
-	//variables necesarias
-	global $fichero,
-		$nombreFichero, $tipoFichero, $longFichero, $tmpNombre, $destinoServidor, $posicion, $extension, $extensionesValidas, $errores;
+	global $fichero, $nombreFichero, $tipoFichero, $longFichero, $tmpNombre, $destinoServidor, $posicion, $extension, $extensionesValidas, $errores;
+
+	//variables para ficheros
+	$fichero = $_FILES['fichero'];
+	$nombreFichero = $_FILES['fichero']['name'];
+	$tipoFichero = $_FILES['fichero']['type'];
+	$longFichero = $_FILES['fichero']['size'];
+	$tmpNombre = $_FILES['fichero']['tmp_name'];
 
 	try {
 		//detectar si se incluye un fichero en el input
@@ -162,11 +162,16 @@ function enviarMail()
 {
 	global $nombre, $email, $telefono, $comentario, $fecha, $remitente, $codigoConsulta, $nombreFichero, $copiaCorreo, $errores, $destinoServidor;
 
+	//mediante una funcion obtengo un codigo aleatorio
+	$codigoConsulta = generarCodigo();
+
 	// Configurar parametros
 	$mail = new PHPMailer(true); //instanciar objeto de la clase phpmailer
 	$mail->Charset = 'utf8';
 	$mail->isHTML(true);
 	$mail->SMTPDebug = 1;
+	$mail->Host = "smtp.example.com";
+	$mail->SMTPAuth = true;
 
 	//Remitente
 	$mail->SetFrom($email, $nombre);
@@ -178,31 +183,60 @@ function enviarMail()
 	// Contenido del correo
 	$mail->Subject = ASUNTO;
 	$mail->Body  =
-		"<p><b>Fecha: </b><?=$fecha?></p><br>
-		<p><b>Remitente: </b><?=$remitente?> </p><br>
-		<p><b>Telefono: </b> <?=$telefono?></p><br>
-		<p><b>Mensaje: </b><?=$comentario?></p><br>
-		<p><b>Codigo Consulta: </b><?=$codigoConsulta?></p><br>
-		<p><b>Nombre fichero: </b><?=$nombreFichero?></p><br>";
-	$copiaCorreo = "<p><b>Fecha: </b><?=$fecha?></p><br>
-		<p><b>Remitente: </b><?=$remitente?> </p><br>
-		<p><b>Telefono: </b> <?=$telefono?></p><br>
-		<p><b>Mensaje: </b><?=$comentario?></p><br>
-		<p><b>Codigo Consulta: </b><?=$codigoConsulta?></p><br>
-		<p><b>Nombre fichero: </b><?=$nombreFichero?></p><br>";
+		"<p><b>Fecha: </b>$fecha</p>
+		<p><b>Remitente: </b>$remitente</p>
+		<p><b>Telefono: </b>$telefono</p>
+		<p><b>Mensaje: </b>$comentario</p>
+		<p><b>Codigo Consulta: </b>$codigoConsulta</p>
+		<p><b>Nombre fichero: </b>$nombreFichero</p>";
 
+	//este es la variable que se muestra en el div correo
+	$copiaCorreo = '<p>Fecha: ' . $fecha . '</p>
+	<p>Remitente: ' . $remitente . '</p>
+	<p>Telefono: ' . $telefono . '</p>
+	<p>Mensaje: ' . $comentario . '</p>
+	<p>Codigo Consulta: ' . $codigoConsulta . '</p>
+	<p>Nombre fichero: ' . $nombreFichero . '</p>';
 
-	//ESTO NO VALE PA NA
-	if ($mail->send()) {
-		$errores .= 'Correo enviado correctamente.';
-	} else {
-		$errores .= 'El envio de correo ha fallado.';
-		//borrar el archivo en caso de error
-		unlink("$destinoServidor/$nombreFichero");
-	}
+	//ESTO SIEMPRE FALLA
+	/*if (!$mail->send()) {
+		$errores .= 'Fallo email.';
+	//borrar el archivo en caso de error
+	unlink("$destinoServidor/$nombreFichero");	
+	} */
 }
 
+//guardar fichero de log con los correos
+function guardarLog()
+{
 
+	global $archivoLog, $fecha, $email, $nombre, $comentario, $codigoConsulta, $nombreFichero;
+
+	$datosFila = $fecha . ';' . $email . ';' . $nombre . ';' . $comentario . ';' . $codigoConsulta . ';' . $nombreFichero.'\n';
+
+
+	$log = fopen($archivoLog, "r+");
+	//$datos = fread($log, filesize($archivoLog));
+	$datos = fread($log, 8192);
+
+	fwrite($log, $datosFila);
+	fwrite($log, $datos);
+	fclose($log);
+}
+
+//mostrar fichero log 
+function mostrarLog()
+{
+	global $archivoLog, $codigoConsulta, $fecha, $email;
+
+	$log = fopen($archivoLog, "r");
+	while (!feof($log)) {
+		$linea = fgets($log);
+		//"<tr><td>$codigoConsulta</td><td>$fecha</td><td>$email</td></tr>";
+		echo $linea;
+	}
+	fclose($log);
+}
 
 
 
