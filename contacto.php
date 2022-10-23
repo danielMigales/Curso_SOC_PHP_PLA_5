@@ -5,9 +5,8 @@ const CHAR_CODE = "A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1V2W3X4Z5";
 
 //inputs del formulario
 $nombre =
-	$email =
-	$telefono =
-	$comentario = $errores = null;
+	$email = $comentario = $errores = null;
+$telefono = 0034;
 
 //array con las extensiones permitidas
 $extensionesValidas = array('.jpg', '.jpeg', '.png', '.gif', 'svg');
@@ -26,6 +25,8 @@ $remitente = null;
 $codigoConsulta = null;
 $copiaCorreo = null;
 
+$filasTabla = null;
+
 // Incluir la libreria PHPMailer
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -40,7 +41,7 @@ if (isset($_POST['enviar'])) {
 
 	//valido inputs del formulario. Esta funcion tiene encadenadas las funciones siguientes
 	validarInputs();
-	guardarLog();
+
 	mostrarLog();
 
 
@@ -199,41 +200,77 @@ function enviarMail()
 	<p>Nombre fichero: ' . $nombreFichero . '</p>';
 
 	//ESTO SIEMPRE FALLA
-	/*if (!$mail->send()) {
-		$errores .= 'Fallo email.';
+	/*if ($mail->send()) {
+		//si el envio es correcto se guarda el log y lanza mensaje
+		guardarLog();
+	} else {		
+		//borrar el archivo en caso de error
+		if (!$nombreFichero == null) {
+		unlink("$destinoServidor/$nombreFichero");
+		}
+	}*/
+
+	//lo pongo fuera por si tengo que comentar el if anterior debido al fallo
+	//guardar fichero de log con los correos
+	guardarLog();
+
 	//borrar el archivo en caso de error
-	unlink("$destinoServidor/$nombreFichero");	
-	} */
+	if (!$nombreFichero == null) {
+		unlink("$destinoServidor/$nombreFichero");
+	}
 }
 
-//guardar fichero de log con los correos
+
 function guardarLog()
 {
 
 	global $archivoLog, $fecha, $email, $nombre, $comentario, $codigoConsulta, $nombreFichero;
 
-	$datosFila = $fecha . ';' . $email . ';' . $nombre . ';' . $comentario . ';' . $codigoConsulta . ';' . $nombreFichero.'\n';
+	//si no hay fichero adjunto escoge la primera linea y con una de ellas rellena el log
+	if ($nombreFichero == null) {
+		$datosFila = $fecha . ';' . $email . ';' . $nombre . ';' . $comentario . ';' . $codigoConsulta . "\n";
+	} else {
+		$datosFila = $fecha . ';' . $email . ';' . $nombre . ';' . $comentario . ';' . $codigoConsulta . ';' . $nombreFichero . "\n";
+	}
 
+	//abrir fichero con fopen
+	$log = fopen($archivoLog, "a+");
 
-	$log = fopen($archivoLog, "r+");
-	//$datos = fread($log, filesize($archivoLog));
-	$datos = fread($log, 8192);
+	//detectar cuantos bytes tiene el archivo log. Cuando el archivo log esta vacio me da error el fread
+	$tamañoBytes = filesize($archivoLog);
 
+	//lo fuerzo a que si esta en blanco el lenght sea 8192
+	if ($tamañoBytes == 0) {
+		$tamañoBytes = 8192;
+	}
+	//leer con fread el archivo de log para incluirlo al final
+	$datos = fread($log, $tamañoBytes);
+
+	//ESTA MIERDA TAMBIEN HAY QUE RETOCARLA NO PUEDE ESCRIBIR TANTAS LINEAS
+
+	//escribir en el archivo la fila
 	fwrite($log, $datosFila);
-	fwrite($log, $datos);
+
+	//escribir en el archivo los datos anteriores
+	//fwrite($log, $datos);
+
+	//cerrar archivo
 	fclose($log);
 }
 
 //mostrar fichero log 
 function mostrarLog()
 {
-	global $archivoLog, $codigoConsulta, $fecha, $email;
+	global $archivoLog,  $nombre, $comentario, $codigoConsulta, $fecha, $email, $nombreFichero, $filasTabla;
 
 	$log = fopen($archivoLog, "r");
+
+	//$linea = array($fecha, $email, $nombre, $comentario, $codigoConsulta, $nombreFichero);
+
 	while (!feof($log)) {
-		$linea = fgets($log);
-		//"<tr><td>$codigoConsulta</td><td>$fecha</td><td>$email</td></tr>";
-		echo $linea;
+		$linea = explode(";", fgets($log));
+		//variable para la tabla del log
+		$filasTabla .= "<tr><td>$linea[4]</td><td>$linea[0]</td><td>$linea[1]</td></tr>";
 	}
 	fclose($log);
 }
@@ -289,7 +326,9 @@ function mostrarLog()
 					<div class='correo'><?= $copiaCorreo ?></div>
 					<hr>
 					<div class='log'>
-						<table></table>
+						<table>
+							<?= $filasTabla ?>
+						</table>
 					</div>
 				</div>
 			</div>
