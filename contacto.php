@@ -7,7 +7,6 @@ const CHAR_CODE = "A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1V2W3X4Z5";
 $nombre =
 	$email = $comentario = $errores = $telefono = null;
 
-
 //array con las extensiones permitidas
 $extensionesValidas = array('.jpg', '.jpeg', '.png', '.gif', 'svg');
 
@@ -25,9 +24,9 @@ $remitente = null;
 $codigoConsulta = null;
 $copiaCorreo = null;
 
+//variables para la tabla del log
 $filasTabla = null;
 $linea = array();
-
 
 // Incluir la libreria PHPMailer
 use PHPMailer\PHPMailer\PHPMailer;
@@ -41,9 +40,10 @@ require '../PLA_5/PHPMailer-master/src/SMTP.php';
 //comprobar si se ha pulsado el botón de enviar
 if (isset($_POST['enviar'])) {
 
-	//valido inputs del formulario. Esta funcion tiene encadenadas las funciones siguientes
+	//valido inputs del formulario. Esta funcion tiene encadenadas el resto de funciones
 	validarInputs();
 
+	//repito la llamada a la funcion para que al entrar cargue el archivo log
 	mostrarLog();
 }
 
@@ -66,7 +66,15 @@ function validarInputs()
 		}
 
 		//recuperar telefono
-		$telefono = filter_input(INPUT_POST, 'telefono', FILTER_VALIDATE_INT);
+		/*if (!$telefono = filter_input(INPUT_POST, 'telefono', FILTER_VALIDATE_INT)) {
+			$errores .= 'No se ha indicado un numero de telefono' . '<br>';
+		}*/
+
+		//si no se informa el telefono lo convierto en un mensaje. No lo valido como int ya que luego me da error. NO SE SOLUCIONARLO
+		$telefono = $_POST['telefono'];
+		if (empty($telefono)) {
+			$telefono = "Telefono sin especificar";
+		}
 
 		//recuperar mensaje del input
 		if (!$comentario = filter_input(INPUT_POST, 'comentario')) {
@@ -101,7 +109,7 @@ function recuperarArchivo()
 		if ($_FILES['fichero']['error'] == 0) {
 
 			//si sobrepasa el tamaño de kb lanzar excepcion
-			if ($longFichero > 1000000000) {
+			if ($longFichero > 100000) {
 				throw new Exception("Archivo excede los 100Kb");
 			}
 
@@ -210,10 +218,10 @@ function enviarMail()
 	//guardar fichero de log con los correos
 	guardarLog();
 
-	//borrar el archivo en caso de error
+	/*//borrar el archivo en caso de error
 	if (!$nombreFichero == null) {
 		unlink("$destinoServidor/$nombreFichero");
-	}
+	}*/
 }
 
 //guardar correo enviado en el archivo de log en formato csv;
