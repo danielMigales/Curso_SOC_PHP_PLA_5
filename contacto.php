@@ -5,8 +5,8 @@ const CHAR_CODE = "A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5P6Q7R8S9T0U1V2W3X4Z5";
 
 //inputs del formulario
 $nombre =
-	$email = $comentario = $errores = null;
-$telefono = 0034;
+	$email = $comentario = $errores = $telefono = null;
+
 
 //array con las extensiones permitidas
 $extensionesValidas = array('.jpg', '.jpeg', '.png', '.gif', 'svg');
@@ -20,12 +20,14 @@ $archivoLog = 'archivos/log.txt';
 //datos para el mail
 const DESTINATARIO = 'destinatario@mail.com';
 const ASUNTO = 'Correo desde formulario de contacto';
-$fecha = date("Y-m-d H:i:s");
+$fecha = date("Y-m-d");
 $remitente = null;
 $codigoConsulta = null;
 $copiaCorreo = null;
 
 $filasTabla = null;
+$linea = array();
+
 
 // Incluir la libreria PHPMailer
 use PHPMailer\PHPMailer\PHPMailer;
@@ -43,12 +45,6 @@ if (isset($_POST['enviar'])) {
 	validarInputs();
 
 	mostrarLog();
-
-
-	//guardar correo enviado en el archivo de log en formato csv;
-
-	//confeccionar filas de la tabla con los correos enviados
-
 }
 
 //recuperar y validar datos obligatorios
@@ -220,11 +216,13 @@ function enviarMail()
 	}
 }
 
-
+//guardar correo enviado en el archivo de log en formato csv;
 function guardarLog()
 {
 
 	global $archivoLog, $fecha, $email, $nombre, $comentario, $codigoConsulta, $nombreFichero;
+
+	$datosFila = null;
 
 	//si no hay fichero adjunto escoge la primera linea y con una de ellas rellena el log
 	if ($nombreFichero == null) {
@@ -234,45 +232,49 @@ function guardarLog()
 	}
 
 	//abrir fichero con fopen
-	$log = fopen($archivoLog, "a+");
+	$log = fopen($archivoLog, "r+");
 
 	//detectar cuantos bytes tiene el archivo log. Cuando el archivo log esta vacio me da error el fread
 	$tamañoBytes = filesize($archivoLog);
 
-	//lo fuerzo a que si esta en blanco el lenght sea 8192
 	if ($tamañoBytes == 0) {
-		$tamañoBytes = 8192;
+		$tamañoBytes = 100;
 	}
-	//leer con fread el archivo de log para incluirlo al final
-	$datos = fread($log, $tamañoBytes);
 
-	//ESTA MIERDA TAMBIEN HAY QUE RETOCARLA NO PUEDE ESCRIBIR TANTAS LINEAS
+	//leer con fread el archivo de log para incluirlo al final
+	$contenidoPrevio = fread($log, $tamañoBytes);
+
+	//retroceder puntero al inicio
+	rewind($log);
 
 	//escribir en el archivo la fila
 	fwrite($log, $datosFila);
 
 	//escribir en el archivo los datos anteriores
-	//fwrite($log, $datos);
+	fwrite($log, $contenidoPrevio);
 
 	//cerrar archivo
 	fclose($log);
 }
 
-//mostrar fichero log 
+//confeccionar filas de la tabla con los correos enviados
 function mostrarLog()
 {
-	global $archivoLog,  $nombre, $comentario, $codigoConsulta, $fecha, $email, $nombreFichero, $filasTabla;
+	global $archivoLog, $linea, $filasTabla;
 
-	$log = fopen($archivoLog, "r");
+	try {
+		$log = fopen($archivoLog, "r");
 
-	//$linea = array($fecha, $email, $nombre, $comentario, $codigoConsulta, $nombreFichero);
+		while (!feof($log)) {
+			$linea = fgets($log);
+			$dato = explode(";", $linea);
+			$filasTabla .= "<tr><td>$dato[4]</td><td>$dato[0]</td><td>$dato[1]</td></tr>";
+		}
 
-	while (!feof($log)) {
-		$linea = explode(";", fgets($log));
-		//variable para la tabla del log
-		$filasTabla .= "<tr><td>$linea[4]</td><td>$linea[0]</td><td>$linea[1]</td></tr>";
+		fclose($log);
+	} catch (Exception $e) {
+		echo $e->getMessage();
 	}
-	fclose($log);
 }
 
 
