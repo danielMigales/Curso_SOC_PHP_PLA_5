@@ -26,7 +26,6 @@ $copiaCorreo = null;
 
 //variables para la tabla del log
 $filasTabla = null;
-$linea = array();
 
 // Incluir la libreria PHPMailer
 use PHPMailer\PHPMailer\PHPMailer;
@@ -39,7 +38,6 @@ require '../PLA_5/PHPMailer-master/src/SMTP.php';
 
 //comprobar si se ha pulsado el botón de enviar
 if (isset($_POST['enviar'])) {
-
 	//valido inputs del formulario. Esta funcion tiene encadenadas el resto de funciones
 	validarInputs();
 }
@@ -64,13 +62,11 @@ function validarInputs()
 		if (!$email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL)) {
 			$errores .= 'Email obligatorio' . '<br>';
 		}
-
 		//si no se informa el telefono continua sin errores pero lo convierto en un mensaje
 		$telefono = $_POST['telefono'];
 		if (empty($telefono) || $telefono == null) {
 			$telefono = "Telefono sin especificar";
 		}
-
 		//recuperar mensaje del input
 		if (!$comentario = filter_input(INPUT_POST, 'comentario')) {
 			$errores .= "El mensaje no puede estar vacio." . '<br>';
@@ -107,11 +103,9 @@ function recuperarArchivo()
 			if ($longFichero > 100000) {
 				throw new Exception("Archivo excede los 100Kb");
 			}
-
 			//identificar la extension del archivo que se sube cortando el nombre del fichero despues del punto
 			$posicion =  strrpos($nombreFichero, '.');
 			$extension = substr($nombreFichero, $posicion);
-
 			//comparar si la extension del archivo esta entre las validas en el array. Si esta continua moviendolo a la carpeta indicada
 			if (in_array($extension, $extensionesValidas)) {
 				try {
@@ -198,8 +192,13 @@ function enviarMail()
 	<p>Codigo Consulta: ' . $codigoConsulta . '</p>
 	<p>Nombre fichero: ' . $nombreFichero . '</p>';
 
+
+
+
+	//ESTA PARTE SIEMPRE FALLA ASI QUE LA COMENTO Y GUARDARE SIEMPRE EL LOG Y EL ARCHIVO
+
 	/*$exito = $mail->Send();
-	if ($exito) {
+	if (!$exito) {
 		$errores .= "Mensaje enviado correctamente";
 		guardarLog();
 	} else {
@@ -210,14 +209,15 @@ function enviarMail()
 		}
 	}*/
 
-	//lo pongo fuera por si tengo que comentar el if anterior debido al fallo
+	//LO SIGUIENTE NO TENDRIA QUE ESTAR AQUI PERO COMO LO ANTERIOR DEL MAIL NO FUNCIONA LO DEJO. COMENTO EL BORRADO DE ARCHIVO PARA COMPROBAR SE GUARDA
+
 	//guardar fichero de log con los correos
 	guardarLog();
 
 	//borrar el archivo en caso de error
-	if (!$nombreFichero == null) {
+	/*if (!$nombreFichero == null) {
 		unlink("$destinoServidor/$nombreFichero");
-	}
+	}*/
 }
 
 //guardar correo enviado en el archivo de log en formato csv;
@@ -248,37 +248,35 @@ function guardarLog()
 
 	//retroceder puntero al inicio
 	rewind($log);
-
 	//escribir en el archivo la fila
 	fwrite($log, $datosFila);
-
 	//escribir en el archivo los datos anteriores
 	fwrite($log, $contenidoPrevio);
-
 	//cerrar archivo
 	fclose($log);
 }
 
+
+
 //confeccionar filas de la tabla con los correos enviados
 function mostrarLog()
 {
-	global $archivoLog, $linea, $filasTabla;
+	global $archivoLog, $filasTabla;
+	$dato = [];
 
-	try {
-		$log = fopen($archivoLog, "r");
+	$log = fopen($archivoLog, "r");
 
-		while (!feof($log)) {
-			$linea = fgets($log);
-			$dato = explode(";", $linea);
-			$filasTabla .= "<tr><td>$dato[4]</td><td>$dato[0]</td><td>$dato[1]</td></tr>";
-		}
+	while (!feof($log)) {
+		$dato = explode(";", fgets($log));
 
-		fclose($log);
-	} catch (Exception $e) {
-		echo $e->getMessage();
+		$dato1 = $dato[0];
+		$dato2 = $dato[4];
+		$dato3 = $dato[1];
+
+		$filasTabla .= "<tr><td>$dato2</td><td>$dato1</td><td>$dato3</td></tr>";
 	}
+	fclose($log);
 }
-
 
 
 ?>
@@ -330,8 +328,9 @@ function mostrarLog()
 					<div class='correo'><?= $copiaCorreo ?></div>
 					<hr>
 					<div class='log'>
+						<!--mostrar tabla de log-->
 						<table>
-							<?= $filasTabla ?>
+							<?php echo $filasTabla; ?>
 						</table>
 					</div>
 				</div>
