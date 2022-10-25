@@ -42,10 +42,10 @@ if (isset($_POST['enviar'])) {
 
 	//valido inputs del formulario. Esta funcion tiene encadenadas el resto de funciones
 	validarInputs();
-
-	//repito la llamada a la funcion para que al entrar cargue el archivo log
-	mostrarLog();
 }
+
+//repito la llamada a la funcion para que al entrar cargue el archivo log
+mostrarLog();
 
 //recuperar y validar datos obligatorios
 function validarInputs()
@@ -65,14 +65,9 @@ function validarInputs()
 			$errores .= 'Email obligatorio' . '<br>';
 		}
 
-		//recuperar telefono
-		/*if (!$telefono = filter_input(INPUT_POST, 'telefono', FILTER_VALIDATE_INT)) {
-			$errores .= 'No se ha indicado un numero de telefono' . '<br>';
-		}*/
-
-		//si no se informa el telefono lo convierto en un mensaje. No lo valido como int ya que luego me da error. NO SE SOLUCIONARLO
+		//si no se informa el telefono continua sin errores pero lo convierto en un mensaje
 		$telefono = $_POST['telefono'];
-		if (empty($telefono)) {
+		if (empty($telefono) || $telefono == null) {
 			$telefono = "Telefono sin especificar";
 		}
 
@@ -203,14 +198,15 @@ function enviarMail()
 	<p>Codigo Consulta: ' . $codigoConsulta . '</p>
 	<p>Nombre fichero: ' . $nombreFichero . '</p>';
 
-	//ESTO SIEMPRE FALLA
-	/*if ($mail->send()) {
-		//si el envio es correcto se guarda el log y lanza mensaje
+	/*$exito = $mail->Send();
+	if ($exito) {
+		$errores .= "Mensaje enviado correctamente";
 		guardarLog();
-	} else {		
+	} else {
+		$errores .= "Problemas enviando correo electrónico.";
 		//borrar el archivo en caso de error
 		if (!$nombreFichero == null) {
-		unlink("$destinoServidor/$nombreFichero");
+			unlink("$destinoServidor/$nombreFichero");
 		}
 	}*/
 
@@ -218,10 +214,10 @@ function enviarMail()
 	//guardar fichero de log con los correos
 	guardarLog();
 
-	/*//borrar el archivo en caso de error
+	//borrar el archivo en caso de error
 	if (!$nombreFichero == null) {
 		unlink("$destinoServidor/$nombreFichero");
-	}*/
+	}
 }
 
 //guardar correo enviado en el archivo de log en formato csv;
@@ -229,7 +225,7 @@ function guardarLog()
 {
 
 	global $archivoLog, $fecha, $email, $nombre, $comentario, $codigoConsulta, $nombreFichero;
-
+	$contenidoPrevio = null;
 	$datosFila = null;
 
 	//si no hay fichero adjunto escoge la primera linea y con una de ellas rellena el log
@@ -245,12 +241,10 @@ function guardarLog()
 	//detectar cuantos bytes tiene el archivo log. Cuando el archivo log esta vacio me da error el fread
 	$tamañoBytes = filesize($archivoLog);
 
-	if ($tamañoBytes == 0) {
-		$tamañoBytes = 100;
+	if (!$tamañoBytes == 0) {
+		//leer con fread el archivo de log para incluirlo al final
+		$contenidoPrevio = fread($log, $tamañoBytes);
 	}
-
-	//leer con fread el archivo de log para incluirlo al final
-	$contenidoPrevio = fread($log, $tamañoBytes);
 
 	//retroceder puntero al inicio
 	rewind($log);
