@@ -65,7 +65,7 @@ function validarInputs()
 		//si no se informa el telefono continua sin errores pero lo convierto en un mensaje
 		$telefono = $_POST['telefono'];
 		if (empty($telefono) || $telefono == null) {
-			$telefono = "Telefono sin especificar";
+			//$telefono = "Telefono sin especificar";
 		}
 		//recuperar mensaje del input
 		if (!$comentario = filter_input(INPUT_POST, 'comentario')) {
@@ -75,7 +75,8 @@ function validarInputs()
 		if ($errores != null) {
 			throw new Exception($errores);
 		}
-		if ($nombre && $email && $telefono && $comentario) {
+		if ($nombre && $email && $comentario) {
+			//si todo esta correcto intenta recuperar el archivo si se ha seleccionado uno
 			recuperarArchivo();
 		}
 	} catch (Exception $e) {
@@ -100,7 +101,7 @@ function recuperarArchivo()
 		if ($_FILES['fichero']['error'] == 0) {
 
 			//si sobrepasa el tamaño de kb lanzar excepcion
-			if ($longFichero > 100000) {
+			if ($longFichero > 1000000) {
 				throw new Exception("Archivo excede los 100Kb");
 			}
 			//identificar la extension del archivo que se sube cortando el nombre del fichero despues del punto
@@ -257,7 +258,6 @@ function guardarLog()
 }
 
 
-
 //confeccionar filas de la tabla con los correos enviados
 function mostrarLog()
 {
@@ -268,12 +268,7 @@ function mostrarLog()
 
 	while (!feof($log)) {
 		$dato = explode(";", fgets($log));
-
-		$dato1 = $dato[0];
-		$dato2 = $dato[4];
-		$dato3 = $dato[1];
-
-		$filasTabla .= "<tr><td>$dato2</td><td>$dato1</td><td>$dato3</td></tr>";
+		$filasTabla .= "<tr><td>$dato[4]</td><td>$dato[0]</td><td>$dato[1]</td></tr>";
 	}
 	fclose($log);
 }
